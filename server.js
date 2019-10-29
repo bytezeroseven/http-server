@@ -12,17 +12,9 @@
 
 	Attach routers to 'ROUNTERS'
 	
-	Expose a directory with 'PUBLIC_DIR'
+	Expose a directory using 'PUBLIC_DIR'
 
 */
-
-let http = require("http");
-
-let path = require("path");
-
-let fs = require("fs");
-
-let server = http.createServer(requestHandler);
 
 let PUBLIC_DIR = "node";
 
@@ -38,6 +30,23 @@ let ROUTERS = {
 
 };
 
+let http = require("http");
+
+let path = require("path");
+
+let fs = require("fs");
+
+let server = http.createServer(requestHandler);
+
+let port = process.env.PORT || 8000;
+
+server.listen(port, function() {
+
+	console.log("Server listening on port " + port + "...");
+
+});
+
+
 function requestHandler(request, response) {
 
 	if (ROUTERS[request.url]) {
@@ -52,9 +61,20 @@ function requestHandler(request, response) {
 
 }
 
+
+/*
+
+	If provided, customUrl will be relative to the root (__dirname), not to 'PUBLIC_DIR'.
+	If customUrl is not provided, the file mentioned in the request will be served relative to 'PUBLIC_DIR'.
+	If the request url is a directory, the index.html file is sent if present.
+
+	Add more Content-Types if you find the need. Stuff works fine for me with the  three content types.
+
+*/
+
 function sendStatic(request, response, customUrl) {
 
-	let url = path.join(__dirname, PUBLIC_DIR, customUrl || request.url);
+	let url = path.join(__dirname, customUrl || (PUBLIC_DIR + request.url));
 
 	let parsedUrl = path.parse(url);
 
@@ -95,7 +115,8 @@ function sendStatic(request, response, customUrl) {
 						response.writeHead(200, {
 
 							"Content-Type": contentType,
-							"Content-Length": stats.size,
+							// why waste bandwidth over content length?
+							// "Content-Length": stats.size, 
 							"Last-Modified": fileModifiedDate
 
 						});
@@ -135,12 +156,5 @@ function sendStatic(request, response, customUrl) {
 }
 
 
-let port = process.env.PORT || 8000;
-
-server.listen(port, function() {
-
-	console.log("Server listening on port " + port + "...");
-
-});
 
 
