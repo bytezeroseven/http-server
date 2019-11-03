@@ -19,7 +19,7 @@ function createServer(PUBLIC_DIRECTORY, ROUTERS, startListening) {
 
 		} else if (request.method == "GET") {
 
-			return sendFile(request, repsonse, path.join(__dirname, PUBLIC_DIRECTORY, request.url));
+			return sendFile(request, response, path.join(__dirname, PUBLIC_DIRECTORY, request.url));
 
 		}
 
