@@ -1,34 +1,4 @@
 
-/*
-
-
-	___     ___   __________   __________   ________           ______   ______   ________   ___      ___  ______   ________
-	\  \____\  \  \___   ___\  \___   ___\  \   __  \  _____   \   ___  \   ___  \   ___ \  \  \    /  /  \   ___  \   ___ \
-	 \   _____  \     \  \         \  \      \   ___/  \____\   \___  \  \   __\  \   _  /_  \  \  /  /    \   __\  \   _  /_
-	  \  \    \  \     \  \         \  \      \  \               ___\  \  \  \___  \  \\_  \  \  \/  /      \  \___  \  \\_  \
-	   \__\    \__\     \__\         \__\      \__\              \______\  \_____\  \__\ \__\  \____/        \_____\  \__\ \__\
-
-
-
-	Attach routers to 'ROUNTERS'
-	
-	Expose a directory using 'PUBLIC_DIR'
-
-*/
-
-let PUBLIC_DIR = "node";
-
-let ROUTERS = {
-
-	"/ip": function(request, response) {
-
-		response.writeHead(200, { "Content-Type": "text/plain" });
-
-		response.end("Your IP Adrress: " + request.socket.remoteAddress);
-
-	}
-
-};
 
 let http = require("http");
 
@@ -36,45 +6,44 @@ let path = require("path");
 
 let fs = require("fs");
 
-let server = http.createServer(requestHandler);
 
-let port = process.env.PORT || 8000;
+function createServer(PUBLIC_DIRECTORY, ROUTERS, startListening) {
 
-server.listen(port, function() {
+	let server = http.createServer(function(request, response) {
 
-	console.log("Server listening on port " + port + "...");
+		let key = request.method + " " + request.url;
 
-});
+		if (ROUTERS[key]) {
+
+			return ROUTERS[key](request, response);
+
+		} else if (request.method == "GET") {
+
+			return sendFile(request, repsonse, path.join(__dirname, PUBLIC_DIRECTORY, request.url));
+
+		}
 
 
-function requestHandler(request, response) {
+	});
 
-	if (ROUTERS[request.url]) {
-		
-		return ROUTERS[request.url](request, response);
-	
-	} else {
+	if (startListening) {
 
-		sendStatic(request, response);
+		let port = process.env.PORT || 8080;
+
+		server.listen(port, function() {
+
+			console.log("Server listening on port " + port + "...");
+
+		});
 
 	}
+	
+	return server;
 
 }
 
 
-/*
-
-	If provided, customUrl will be relative to the root (__dirname), not to 'PUBLIC_DIR'.
-	If customUrl is not provided, the file mentioned in the request will be served relative to 'PUBLIC_DIR'.
-	If the request url is a directory, the index.html file is sent if present.
-
-	Add more Content-Types if you find the need. Stuff works fine for me with the  three content types.
-
-*/
-
-function sendStatic(request, response, customUrl) {
-
-	let url = path.join(__dirname, customUrl || (PUBLIC_DIR + request.url));
+function sendFile(request, response, url) {
 
 	let parsedUrl = path.parse(url);
 
@@ -136,7 +105,7 @@ function sendStatic(request, response, customUrl) {
 				} else {
 
 					response.writeHead(500, { "Content-Type": "text/plain" });
-					response.end("Error 500");
+					response.end("Error 500 Server messed up");
 
 				}
 
@@ -156,5 +125,10 @@ function sendStatic(request, response, customUrl) {
 }
 
 
+module.exports = {
 
+	createServer: createServer,
 
+	sendFile: sendFile
+
+}
