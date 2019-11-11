@@ -2,42 +2,71 @@
 
 let http = require("http");
 
-let path = require("path");
-
 let fs = require("fs");
 
+function joinPath() {
 
-function createServer(PUBLIC_DIRECTORY, ROUTERS, startListening) {
+	let slash = __dirname.indexOf("/") > -1 ? "/" : "\\";
+
+	let rawPath = Array.prototype.join.call(arguments, slash);
+	return rawPath.replace(/\\+|\/+/g, slash).replace(/\\+|\/+/g, slash);
+
+}
+
+function createServer(routers, publicDir) {
 
 	let server = http.createServer(function(request, response) {
 
-		let key = request.method + " " + request.url;
+		let reqUrl = request.url;
 
-		if (ROUTERS[key]) {
+		let query = {};
+		let rawQuery = "";
+		let urlWithoutQuery = reqUrl;
 
-			return ROUTERS[key](request, response);
+		let i = reqUrl.indexOf("?");
+		let hasQuery = i > -1;
+
+		if (hasQuery) {
+
+			rawQuery = reqUrl.substring(i + 1);
+			urlWithoutQuery = reqUrl.substring(0, i);
+
+			let keyValuePairArr = rawQuery.split("&");
+
+			for (let i = 0; i < keyValuePairArr.length; i++) {
+
+				let keyValuePair = keyValuePairArr[i].split("=");
+
+				query[keyValuePair[0]] = keyValuePair[1]; 
+
+			}
+			
+		}
+
+		request.query = query;
+		request.rawQuery = rawQuery;
+
+		let route = request.method + " " + urlWithoutQuery;
+
+		if (routers[route]) {
+
+			return routers[route](request, response);
 
 		} else if (request.method == "GET") {
 
-			return sendFile(request, response, path.join(__dirname, PUBLIC_DIRECTORY, request.url));
+			let x = joinPath(__dirname, publicDir, urlWithoutQuery);
 
+			return sendFile(request, response, x);
+
+		} else {
+
+			return response.end();
+		
 		}
 
 
 	});
 
-	if (startListening) {
-
-		let port = process.env.PORT || 8080;
-
-		server.listen(port, function() {
-
-			console.log("Server listening on port " + port + "...");
-
-		});
-
-	}
-	
 	return server;
 
 }
@@ -45,13 +74,11 @@ function createServer(PUBLIC_DIRECTORY, ROUTERS, startListening) {
 
 function sendFile(request, response, url) {
 
-	let parsedUrl = path.parse(url);
+	let ext = url.substring(url.indexOf("."));
 
-	let ext = parsedUrl.ext;
+	if (ext == url) {
 
-	if (ext == "") {
-
-		url = path.join(url, "index.html");
+		url = joinPath(url, "index.html");
 
 		ext = ".html";
 
@@ -61,7 +88,7 @@ function sendFile(request, response, url) {
 
 		".html": "text/html",
 		".js": "text/javascript",
-		".css": "text/stylesheet"
+		".css": "text/css"
 
 	}
 
@@ -91,7 +118,6 @@ function sendFile(request, response, url) {
 						});
 
 						let readStream = fs.createReadStream(url);
-
 						readStream.pipe(response);
 						
 					} else {
@@ -101,7 +127,6 @@ function sendFile(request, response, url) {
 
 					}
 					
-
 				} else {
 
 					response.writeHead(500, { "Content-Type": "text/plain" });
@@ -114,13 +139,11 @@ function sendFile(request, response, url) {
 		} else {
 
 			response.writeHead(404, { "Content-Type": "text/plain" });
-
 			response.end("Error 404 File not found");
 
 		}
 
 	});
-
 
 }
 
@@ -128,7 +151,7 @@ function sendFile(request, response, url) {
 module.exports = {
 
 	createServer: createServer,
-
-	sendFile: sendFile
+	sendFile: sendFile,
+	joinPath: joinPath
 
 }
